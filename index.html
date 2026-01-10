@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HOME · fel an Studio</title>
+  <meta name="description" content="fel an Studio の入口" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="wrap site">
+    <div class="brand">
+      <div class="mark">·/·</div>
+      <h1>fel an Studio</h1>
+      <div class="tag mono">fel an = 温かさを置いておく</div>
+    </div>
+    <div data-common-nav></div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+  <p class="title">浮かべておく場所</p>
+  <h2>ここに、作ったものと、途中のものと、置いておきます。</h2>
+  <p>押し付けず。見ようと思えば見える。<span class="mono">·/·</span> はその印です。</p>
+  <hr class="sep" />
+  
+</section>
+
+<section class="grid">
+  <article class="card">
+    <h3>Games</h3>
+    <p>RS 系列と、実験作。静かな観測と、余白。</p>
+    <div class="meta">
+      <span class="pill">RS</span>
+      <span class="pill">LDOS</span>
+      <a href="games.html" class="pill">→ 開く</a>
+    </div>
+  </article>
+
+  <article class="card soft">
+    <h3>Apps</h3>
+    <p>制作の摩擦を減らす道具。小さく、長く残るもの。</p>
+    <div class="meta">
+      <span class="pill">Mark Guide</span>
+      <span class="pill">Launchers</span>
+      <a href="apps.html" class="pill">→ 開く</a>
+    </div>
+  </article>
+
+  <article class="card soft">
+    <h3>Records</h3>
+    <p>短文コラム／進捗の断片。意味があるようで無い。</p>
+    <div class="meta">
+      <span class="pill">短文</span>
+      <span class="pill">Log</span>
+      <a href="records.html" class="pill">→ 開く</a>
+    </div>
+  </article>
+
+  <article class="card">
+    <h3>About</h3>
+    <p>説明するほどでもないような。</p>
+    <div class="meta">
+      <span class="pill">fel an</span>
+      <span class="pill">常世思兼</span>
+      <a href="about.html" class="pill">→ 開く</a>
+    </div>
+  </article>
+</section>
+
+  </main>
+
+  <footer class="wrap">
+    <div class="footline">
+      <small>© <span id="y"></span> fel an Studio</small>
+      <small class="mono">X: <a href="https://x.com/omoikane_dev" target="_blank" rel="noopener noreferrer">@omoikane_dev</a></small>
+    </div>
+  </footer>
+
+  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>
+  <script src="./assets/nav.js"></script>
+</body>
+</html>

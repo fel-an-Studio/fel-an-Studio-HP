@@ -1,0 +1,33 @@
+(() => {
+  const nav = [
+    { href: "index.html", label: "HOME" },
+    { href: "games.html", label: "GAMES" },
+    { href: "apps.html", label: "APPS" },
+    { href: "records.html", label: "RECORDS" },
+    { href: "about.html", label: "ABOUT" },
+  ];
+
+  // Build a prefix like "../" depending on depth so links work from subfolders too.
+  const parts = location.pathname.split("/").filter(Boolean);
+  const depth = Math.max(0, parts.length - 1); // minus current file
+  const prefix = depth === 0 ? "" : "../".repeat(depth);
+
+  const here = (parts[parts.length - 1] || "index.html").toLowerCase();
+
+  const host = document.querySelector("[data-common-nav]");
+  if (!host) return;
+
+  const el = document.createElement("nav");
+  el.className = "top";
+  el.setAttribute("aria-label", "Primary");
+
+  nav.forEach(item => {
+    const a = document.createElement("a");
+    a.href = prefix + item.href;
+    a.textContent = item.label;
+    if (item.href.toLowerCase() === here) a.setAttribute("aria-current", "page");
+    el.appendChild(a);
+  });
+
+  host.replaceChildren(el);
+})();

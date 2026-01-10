@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>APPS · fel an Studio</title>
+  <meta name="description" content="アプリ一覧" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="wrap site">
+    <div class="brand">
+      <div class="mark">·/·</div>
+      <h1>fel an Studio</h1>
+      <div class="tag mono">fel an = 温かさを置いておく</div>
+    </div>
+    <div data-common-nav></div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+  <p class="title">APPS</p>
+  <h2>制作を止めないための道具。</h2>
+  <p>説明より、起動。摩擦より、配置。</p>
+</section>
+
+<section class="grid">
+  <article class="card">
+    <h3>Mark Guide</h3>
+    <p>AIの前提指示を育てるためのガイド。中級〜上級向けに寄せていく。</p>
+    <div class="meta">
+      <span class="pill">Desktop</span>
+      <span class="pill">Preset/Custom</span>
+      <span class="pill">Status: Internal</span>
+    </div>
+  </article>
+
+  <article class="card soft">
+    <h3>Work Launcher / Experiment Monitor</h3>
+    <p>実験を“見える”状態にする。起動中だけ現れる小窓。</p>
+    <div class="meta">
+      <span class="pill">Launcher</span>
+      <span class="pill">Monitor</span>
+      <span class="pill">Status: Internal</span>
+    </div>
+  </article>
+
+  <article class="card soft">
+    <h3>Download Integrity Checker</h3>
+    <p>スマホ→クラウド→PCの受け渡しが壊れていないかを確認する小さな道具。</p>
+    <div class="meta">
+      <span class="pill">Utility</span>
+      <span class="pill">Status: Internal</span>
+    </div>
+  </article>
+</section>
+
+  </main>
+
+  <footer class="wrap">
+    <div class="footline">
+      <small>© <span id="y"></span> fel an Studio</small>
+      <small class="mono">X: <a href="https://x.com/omoikane_dev" target="_blank" rel="noopener noreferrer">@omoikane_dev</a></small>
+    </div>
+  </footer>
+
+  <script>document.getElementById("y").textContent = new Date().getFullYear();</script>
+  <script src="./assets/nav.js"></script>
+</body>
+</html>

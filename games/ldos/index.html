@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>LDOS</title>
+    <style>
+        body {
+            background-color: #090C0B;
+            color: #1F7A55;
+            font-family: 'Ubuntu Mono', 'Cascadia Code', 'Courier New', monospace;
+            font-size: 18px; 
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            line-height: 1.3;
+        }
+
+        /* ヘッダーのレイアウト固定 */
+        .sys-header { 
+            display: grid;
+            grid-template-columns: 220px 1fr auto; 
+            align-items: center;
+            margin-bottom: 10px;
+            opacity: 0.8;
+            border-bottom: 1px solid #165e3d;
+            padding-bottom: 10px;
+        }
+
+        .guide-plate { font-size: 0.8em; opacity: 0.5; }
+
+        .directory { display: flex; gap: 20px; }
+        .dir-item { cursor: default; }
+        .active-dir { font-weight: bold; border-left: 2px solid #26A269; border-right: 2px solid #26A269; padding: 0 8px; }
+        
+        #main-container { display: flex; flex-grow: 1; overflow: hidden; }
+        
+        /* 物理的な面合わせ：左パネル幅を固定 */
+        #left-panel { width: 550px; border-right: 1px solid #1F7A55; padding-right: 20px; flex-shrink: 0; }
+        #right-panel { flex-grow: 1; padding-left: 30px; white-space: pre; }
+        
+        #startup-console { white-space: pre; font-size: 18px; }
+        .cursor-blink {
+            display: inline-block; width: 10px; height: 18px;
+            background-color: #1F7A55; animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+        @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+        .selected-universe { background-color: rgba(38,162,105,0.10); }
+
+        /* Color roles (Gen1) */
+        #sys-label { color: #6F8F82; }
+        #res-indicator { color: #6F8F82; border-color: #1F7A55; }
+        .guide-plate { border: 1px solid #1F7A55; color: #6F8F82; }
+        #universe-list { white-space: pre; font-size: 16px; line-height: 1.25; }
+        .u-meta, .u-val, .u-var, .u-sep { color: #1F7A55; }
+        .u-unit, .u-hint, .u-dim { color: #6F8F82; }
+        .u-log { color: #26A269; }
+        #right-panel { color: #26A269; }
+    
+</style>
+</head>
+<body>
+    <div id="boot-screen" style="white-space: pre; position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none;">
+LDOS
+Low-Dimensional Observation System
+    </div>
+
+    <div id="ui-main" style="display:none;">
+        <div class="sys-header">
+            <div id="sys-label">LDOS v0.4.0 — Gen1</div>
+            <div id="res-indicator" class="guide-plate">SCAN: [||||||||||]  SYNC: OPTIMAL</div>
+            <div class="directory" id="nav-dir"></div>
+        </div>
+        <div class="guide-plate" style="margin-bottom:15px; border-bottom: 1px solid #165e3d; padding-bottom:5px;">
+            [W/S]:Select [A/D]:Dir [1/2/3]:Action [ESC]:Logoff
+        </div>
+        
+        <div id="main-container">
+            <div id="left-panel">
+                <div style="opacity: 0.5; margin-bottom: 8px; font-size: 0.9em;"> ID(GEN)   VAL.        VAR:      | LIVE_LOG</div>
+                <div id="universe-list"></div>
+            </div>
+            <div id="right-panel"></div>
+        </div>
+    </div>
+
+    <div id="startup-console"></div>
+
+    <script>
+        const uiMain = document.getElementById('ui-main');
+        const listEl = document.getElementById('universe-list');
+        const rightEl = document.getElementById('right-panel');
+        const startEl = document.getElementById('startup-console');
+        const navDirEl = document.getElementById('nav-dir');
+        const resEl = document.getElementById('res-indicator');
+
+        let state = "BOOT";
+        let mode = "LIVE";
+        let universes = [];
+        let selectedIndex = 0;
+        let nextUniverseId = 1;
+
+        // --- Log pools ---
+const normalLogs = ["背景放射の微増を確認。", "量子ゆらぎが閾値を超過。", "対象領域の密度に偏りが発生。"];
+
+// G進行を“ログの質感”で見せるための語彙プール
+// G0: 通常
+const g0Logs = [
+    "背景放射の微増を確認。",
+    "時空構造の局所的な歪曲を検知。",
+    "熱分布に不均一なクラスタが形成。",
+    "化学ポテンシャルの非連続的な変動を観測。",
+    "狭帯域でのパルス放射が継続。"
+];
+
+// G1: DRIFT（兆候・可能性・局所）
+const g1Logs = [
+    "背景放射に局所的な変動が含まれている可能性。",
+    "時空の整合性に軽微なずれが観測される。",
+    "熱分布の境界が安定を失い始めた兆候。",
+    "反応連鎖が閾値付近で停滞している可能性。",
+    "観測ノイズの分離が不安定化。"
+];
+
+// G1追記ログ（後追い・追いついた/追いつけなかった感）
+const g1FollowLogs = [
+    "ログが遅延して合流した可能性。",
+    "観測記録が後追いで到達した可能性。",
+    "同期が一瞬だけ追いついた兆候。",
+    "断片が遅れて混入した可能性。",
+    "追跡が追いつけなかった可能性。"
+];
+
+// G2: DISCONTINUITY（断裂・欠落・途切れ）
+const g2Logs = [
+    "同期に不整合が",
+    "観測基準が再初期化された可能性。",
+    "応答が検知限界を",
+    "時系列が部分的に欠落。",
+    "信号の参照が不確定。"
+];
+
+const lastLogCandidates = [
+    "観測対象からの応答が不確定となった可能性。",
+    "局所的な同期が失われた可能性。",
+    "観測基準値の維持が困難となった可能性。"
+];
+
+function getGStage(gen) {
+    // しきい値は後で調整しやすいように関数化
+    // G0: G < 2 / G1: 2 <= G < 5 / G2: G >= 5
+    if (gen < 2) return 0;      // G0
+    if (gen < 5) return 1;      // G1
+    return 2;                  // G2
+}
+
+function pickLogByStage(stage, universeCount) {
+    // 並列宇宙が増えるほど、G1/G2側の“揺れ”が出やすくなる（UIでは明示しない）
+    const bias = Math.max(0, universeCount - 3) * 0.10; // 0, 0.10, 0.20...
+    let s = stage;
+    if (stage === 0 && Math.random() < bias) s = 1;
+    if (stage === 1 && Math.random() < bias * 0.75) s = 2;
+
+    let pool = g0Logs;
+    if (s === 1) pool = g1Logs;
+    if (s === 2) pool = g2Logs;
+
+    let msg = pool[Math.floor(Math.random() * pool.length)];
+
+    // G2：35%で文を途中終了（断裂・欠落の印象を強める）
+    if (s === 2 && msg.length > 6 && Math.random() < 0.35) {
+        const minCut = Math.max(4, Math.floor(msg.length * 0.35));
+        const maxCut = Math.max(minCut + 1, Math.floor(msg.length * 0.85));
+        const cut = Math.min(msg.length - 1, minCut + Math.floor(Math.random() * (maxCut - minCut + 1)));
+        msg = msg.slice(0, cut);
+    }
+    return { msg, stage: s };
+}
+
+function formatTimestamp(stage) {
+    if (stage !== 2) {
+        const ts = (performance.now() / 1000).toFixed(1);
+        return `T+${ts.padStart(6, '0')}`;
+    }
+    // G2：45%程度で崩す（“同期ずれ/断裂”として見せる）
+    if (Math.random() < 0.45) {
+        const forms = ["T+???.-", "T+210~", "T+--.-", "T+???.?"];
+        return forms[Math.floor(Math.random() * forms.length)];
+    }
+    const ts = (performance.now() / 1000).toFixed(1);
+    return `T+${ts.padStart(6, '0')}`;
+}
+
+function nextLogDelayMs(stage) {
+    // Gが進むほどログ間隔が不安定になる（UIには出さない）
+    if (stage === 0) return 6000 + Math.random() * 9000;    // 6–15s（現行相当）
+    if (stage === 1) return 7000 + Math.random() * 15000;   // 7–22s
+    return 10000 + Math.random() * 26000;                  // 10–36s
+}
+
+
+    async function boot() {
+            document.getElementById('boot-screen').style.display = "block";
+            await new Promise(r => setTimeout(r, 2000));
+            document.getElementById('boot-screen').style.display = "none";
+            startLogin();
+        }
+
+        async function startLogin() {
+            state = "LOGIN";
+            startEl.innerHTML = "LOGIN: <span class='cursor-blink'></span>\n";
+            for (let l of ["CONNECTING...", "SYNCING...", "LDOS::READY."]) {
+                await new Promise(r => setTimeout(r, 600));
+                startEl.innerText += l + "\n";
+            }
+            generateNewUniverse();
+            setTimeout(enterMain, 800);
+        }
+
+        function enterMain() {
+            state = "MAIN";
+            startEl.style.display = "none";
+            uiMain.style.display = "block";
+            update();
+            setInterval(tick, 2500); // 進行スピードを大幅に低下 (1s -> 2.5s)
+            setInterval(autoExpandAndDecay, 12000); // 生成・消失判定もゆったりと
+        }
+
+        function tick() {
+            if (state !== "MAIN") return;
+            const count = universes.length;
+            universes.forEach(u => {
+                // 解像度低下による数値のフリーズ再現
+                let errorRate = Math.max(0, (count - 4) * 0.15);
+                if (Math.random() > errorRate) {
+                    u.val += (Math.random() - 0.5) * 0.01;
+                    u.var = ((Math.random() - 0.5) * 0.05).toFixed(2);
+                }
+                
+                                // ログ更新（G進行を“質感”で見せる）
+                // nextLogAt は各宇宙ごとにスケジューリングされる
+                if (u.nextLogAt == null) {
+                    u.nextLogAt = performance.now() + (5000 + Math.random() * 15000);
+                }
+                if (performance.now() >= u.nextLogAt) {
+    const stage = getGStage(u.gen);
+    const picked = pickLogByStage(stage, count);
+    u.lastLog = picked.msg;
+
+    const ts = formatTimestamp(picked.stage);
+    u.history.unshift(`[${ts}] ${u.lastLog}`);
+    if (u.history.length > 20) u.history.pop();
+
+    // G1：低確率で“追記ログ”（後追いで1行だけ混ざる）
+    if (picked.stage === 1 && Math.random() < 0.08) {
+        const delay = 1200 + Math.random() * 2200; // 1.2–3.4s
+        setTimeout(() => {
+            if (state !== "MAIN") return;
+            if (!universes.includes(u)) return;
+            const follow = g1FollowLogs[Math.floor(Math.random() * g1FollowLogs.length)];
+            u.lastLog = follow;
+            const ts2 = formatTimestamp(1); // G1はタイムスタンプ正常
+            u.history.unshift(`[${ts2}] ${u.lastLog}`);
+            if (u.history.length > 20) u.history.pop();
+            update();
+        }, delay);
+    }
+
+    u.nextLogAt = performance.now() + nextLogDelayMs(picked.stage);
+}
+            });
+            update();
+        }
+
+        function autoExpandAndDecay() {
+            if (state !== "MAIN") return;
+
+            // 消失判定ロジック (三段階モデル)
+            for (let i = universes.length - 1; i >= 0; i--) {
+                const u = universes[i];
+                const roll = Math.random();
+
+                // 第三段階：スロット消失 (確率は低め、飛び級あり)
+                if (roll < 0.05) {
+                    universes.splice(i, 1);
+                    if (selectedIndex >= universes.length) selectedIndex = Math.max(0, universes.length - 1);
+                    continue;
+                }
+
+                // 第二段階：Gリセット (断絶)
+                if (roll < 0.15) {
+                    const hasLastLog = Math.random() < 0.65; // 約65%で最後のログが残る（約35%は残らない）
+                    if (hasLastLog) {
+                        u.lastLog = lastLogCandidates[Math.floor(Math.random() * lastLogCandidates.length)];
+                    }
+                    setTimeout(() => {
+                        u.gen = 1;
+                        u.history = hasLastLog ? [`[T+---] ${u.lastLog}`, `[T+000.0] 観測基準が再初期化された可能性。`] : [`[T+000.0] 観測基準が再初期化された可能性。`];
+                        u.val = 1.0;
+                        u.nextLogAt = performance.now() + (8000 + Math.random() * 20000);
+                    }, 2000);
+                    continue;
+                }
+
+                // 第一段階：G継承 (劣化の兆候)
+                if (Math.random() < 0.4) {
+                    u.gen++;
+                    u.lastLog = lastLogCandidates[Math.floor(Math.random() * lastLogCandidates.length)];
+                    u.nextLogAt = performance.now() + nextLogDelayMs(getGStage(u.gen));
+                }
+            }
+
+            if (universes.length < 5 && Math.random() < 0.4) generateNewUniverse();
+        }
+
+        function generateNewUniverse() {
+            const newId = String(nextUniverseId++).padStart(2, '0');
+            universes.push({
+                id: newId, gen: 1, val: 1.0, var: 0.0, 
+                lastLog: "観測層の確立を確認。", 
+                history: [`[T+000.0] 初期条件が展開された。`],
+                nextLogAt: performance.now() + (5000 + Math.random() * 15000)
+            });
+        }
+
+        function update() {
+            if (state !== "MAIN") return;
+            const count = universes.length;
+
+            // SCANインジケーター更新
+            const scanBars = "|".repeat(Math.max(0, 10 - count)) + ".".repeat(Math.min(10, count));
+            const syncStatus = count > 6 ? "UNSTABLE" : (count > 4 ? "DEGRADED" : "OPTIMAL");
+            resEl.innerText = `SCAN: [${scanBars}]  SYNC: ${syncStatus}`;
+
+            listEl.innerHTML = universes.map((u, i) => {
+                const vStr = (count > 6 && Math.random() < 0.2) ? "0.00e+00" : u.val.toExponential(2);
+                const varStr = (u.var >= 0 ? "+" : "") + u.var + "%";
+                const cursor = (i === selectedIndex) ? ">" : " ";
+                const className = (i === selectedIndex) ? "selected-universe" : "";
+                return `<div class="${className}">${cursor} <span class="u-id">${u.id}</span><span class="u-meta">(G${String(u.gen).padStart(2, '0')})</span>   <span class="u-val">${vStr.padEnd(10)}</span>  <span class="u-var">${varStr.padStart(7)}</span>  <span class="u-sep">|</span> <span class="u-log">${u.lastLog}</span></div>`;
+            }).join("");
+
+            const u = universes[selectedIndex] || {id:"--", gen:0, val:0, var:0, history:[]};
+            if (mode === "LIVE") {
+                rightEl.innerText = `\n[ LIVE_FEED ]\n\n>> ${u.lastLog}\n\n(Monitoring active stream...)`;
+            } else if (mode === "MONITOR") {
+                rightEl.innerText = `
+[ TARGET_INFO ]
+ID: ${u.id}(G${String(u.gen).padStart(2, '0')})
+CURRENT_VAL: ${u.val.toFixed(8)}
+VARIATION:   ${u.var}%
+-------------------------------
+[ LOG_HISTORY ]
+${u.history.slice(0,12).join("\n")}`;
+            } else {
+                rightEl.innerText = `\n[ ${mode} ]\n\nLAYER_UNAVAILABLE.`;
+            }
+            
+            const dirs = ["LIVE", "MONITOR", "PROTOCOLS", "SETTINGS"];
+            navDirEl.innerHTML = dirs.map(d => `<span class="dir-item ${mode===d?'active-dir':''}">${mode===d?'['+d+']':d}</span>`).join(" ");
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (state !== "MAIN") return;
+            const k = e.key.toUpperCase();
+            if (k === "D") mode = ["LIVE", "MONITOR", "PROTOCOLS", "SETTINGS"][(["LIVE", "MONITOR", "PROTOCOLS", "SETTINGS"].indexOf(mode) + 1) % 4];
+            if (k === "A") mode = ["LIVE", "MONITOR", "PROTOCOLS", "SETTINGS"][(["LIVE", "MONITOR", "PROTOCOLS", "SETTINGS"].indexOf(mode) - 1 + 4) % 4];
+            if (k === "W") selectedIndex = (selectedIndex - 1 + universes.length) % universes.length;
+            if (k === "S") selectedIndex = (selectedIndex + 1) % universes.length;
+            update();
+        });
+
+        boot();
+    </script>
+</body>
+</html>
