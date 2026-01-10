@@ -8,7 +8,7 @@
   ];
 
   // Build a prefix like "../" depending on depth so links work from subfolders too.
-  const prefix = "";
+  const prefix = location.pathname.startsWith("/fel-an-Studio-HP/") ? "/fel-an-Studio-HP/" : "/";
 
   const here = (parts[parts.length - 1] || "index.html").toLowerCase();
 
