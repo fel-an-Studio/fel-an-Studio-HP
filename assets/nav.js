@@ -8,9 +8,7 @@
   ];
 
   // Build a prefix like "../" depending on depth so links work from subfolders too.
-  const parts = location.pathname.split("/").filter(Boolean);
-  const depth = Math.max(0, parts.length - 1); // minus current file
-  const prefix = depth === 0 ? "" : "../".repeat(depth);
+  const prefix = "";
 
   const here = (parts[parts.length - 1] || "index.html").toLowerCase();
 
