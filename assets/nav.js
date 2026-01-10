@@ -7,11 +7,11 @@
     { href: "about.html", label: "ABOUT" },
   ];
 
-  // Build a prefix like "../" depending on depth so links work from subfolders too.
-  const prefix = location.pathname.startsWith("/fel-an-Studio-HP/") ? "/fel-an-Studio-HP/" : "/";
+  // 今いるページ名を取り出す（例: games.html）
+  const path = location.pathname.split("/").filter(Boolean);
+  const here = (path[path.length - 1] || "index.html").toLowerCase();
 
-  const here = (parts[parts.length - 1] || "index.html").toLowerCase();
-
+  // HTML側にこれがある前提: <div data-common-nav></div>
   const host = document.querySelector("[data-common-nav]");
   if (!host) return;
 
@@ -21,9 +21,12 @@
 
   nav.forEach(item => {
     const a = document.createElement("a");
-    a.href = prefix + item.href;
+    a.href = item.href;              // ← 余計な prefix を付けず、同じフォルダ内移動にする
     a.textContent = item.label;
-    if (item.href.toLowerCase() === here) a.setAttribute("aria-current", "page");
+
+    if (item.href.toLowerCase() === here) {
+      a.setAttribute("aria-current", "page");
+    }
     el.appendChild(a);
   });
 
