@@ -215,13 +215,3 @@ small{ font-size: 12px; }
 @media (prefers-reduced-motion: reduce){
   *{ scroll-behavior: auto !important; }
 }
-
-
-/* Link pills */
-a.pill.pill-link{
-  text-decoration: none;
-  color: inherit;
-}
-a.pill.pill-link:hover{
-  border-color: rgba(255,255,255,0.35);
-}
